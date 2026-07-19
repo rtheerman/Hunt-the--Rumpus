@@ -1,0 +1,1059 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#090b18" />
+<title>Hunt the Rumpus</title>
+<style>
+:root{
+  --bg:#10132a; --panel:#252b52; --ink:#f2f0d8; --orange:#ff5a28;
+  --green:#43e06f; --red:#ff3b4f; --cyan:#6de7ff; --purple:#8a6cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;min-height:100dvh;background:#090b18;color:var(--ink);font-family:"Courier New",monospace}
+body{display:grid;place-items:center;padding:16px;overflow-x:hidden}
+#app{width:min(1180px,100%);background:var(--bg);border:8px solid var(--purple);box-shadow:0 0 0 6px #20a93d,0 18px 50px #000;padding:14px;position:relative}
+#app:after{content:"";pointer-events:none;position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0,rgba(255,255,255,.025) 1px,transparent 2px,transparent 4px);mix-blend-mode:screen}
+header{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:3px solid var(--cyan);padding:4px 4px 10px}
+h1{font-size:clamp(20px,4vw,42px);margin:0;color:var(--orange);text-shadow:2px 0 #000,0 2px #000,2px 2px #000,4px 4px 0 #000;letter-spacing:2px;image-rendering:pixelated;font-weight:700;line-height:1.05}
+.small{font-size:11px;opacity:.95} #campaign{color:#6de7ff;font-weight:bold} #health{color:#ff5d78;font-weight:bold;letter-spacing:2px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;margin-top:14px}
+canvas{width:100%;aspect-ratio:4/3;background:#141936;border:6px solid var(--ink);image-rendering:pixelated;display:block}
+.panel{background:var(--panel);border:3px solid var(--ink);padding:12px;min-height:100%}
+.panel h2{font-size:18px;color:var(--cyan);margin:0 0 10px;font-weight:700}
+#status{min-height:90px;line-height:1.35;font-weight:700}
+#noise{font-size:13px;color:var(--orange);min-height:44px;font-weight:700}
+button,select{font:inherit;background:#11162f;color:var(--ink);border:4px solid var(--ink);padding:11px 12px;cursor:pointer;image-rendering:pixelated;box-shadow:4px 4px 0 #000;border-radius:0}
+button:hover,button:focus{background:var(--orange);color:#111}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.controls button{min-height:42px}
+.controls .blank{visibility:hidden}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.row>*{flex:1}
+#overlay{position:absolute;inset:0;background:rgba(4,5,15,.94);display:grid;place-items:center;padding:22px;z-index:4}
+.card{max-width:700px;width:100%;text-align:center;border:5px solid var(--orange);background:#171b3a;padding:24px;box-shadow:0 0 0 5px #000}
+.card h2{font-size:clamp(28px,6vw,58px);margin:0;color:var(--orange);text-shadow:2px 0 #000,0 2px #000,2px 2px #000,4px 4px #000;font-weight:700;line-height:1.05}
+.card p{line-height:1.45}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.options label{text-align:left}
+.options select{width:100%;margin-top:4px}
+#rumpusPreview{width:180px;height:140px;margin:auto;image-rendering:pixelated}
+.flash{animation:flash .18s steps(2) 1}
+.shake{animation:shake .25s linear 1}
+@keyframes flash{50%{filter:invert(1) brightness(2)}}
+@keyframes shake{25%{transform:translate(6px,-3px)}50%{transform:translate(-7px,3px)}75%{transform:translate(4px,2px)}}
+.legend{font-size:12px;line-height:1.5;margin-top:12px;border-top:2px solid var(--cyan);padding-top:10px}
+.dot{display:inline-block;width:10px;height:10px;margin-right:5px}
+@media(max-width:760px){
+  html,body{width:100%;min-height:100%;overflow-x:hidden}
+  body{
+    display:block;
+    padding:env(safe-area-inset-top) 3px env(safe-area-inset-bottom);
+    background:#090b18;
+  }
+  #app{
+    width:100%;
+    min-height:100svh;
+    padding:5px;
+    border-width:4px;
+    box-shadow:none;
+  }
+  header{
+    display:flex;
+    padding:1px 2px 5px;
+    align-items:flex-start;
+    border-bottom-width:2px;
+  }
+  header .small:first-of-type{display:none}
+  h1{font-size:21px;letter-spacing:1px;line-height:1}
+  #campaign,#score,#health{font-size:9px;line-height:1.15}
+  main{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    margin-top:5px;
+  }
+  main>div{width:100%}
+  canvas{
+    width:100%;
+    height:auto;
+    max-height:54svh;
+    border-width:3px;
+  }
+  .panel{
+    min-height:0;
+    padding:5px;
+    border-width:2px;
+  }
+  .panel h2{display:none}
+  #status{
+    min-height:34px;
+    font-size:10px;
+    line-height:1.15;
+    margin-bottom:2px;
+  }
+  #noise{
+    min-height:22px;
+    font-size:9px;
+    line-height:1.1;
+  }
+  .controls{
+    grid-template-columns:repeat(3,1fr);
+    gap:4px;
+    margin-top:3px;
+  }
+  .controls button{
+    min-height:42px;
+    padding:3px;
+    font-size:20px;
+    border-width:3px;
+    box-shadow:2px 2px 0 #000;
+    touch-action:manipulation;
+  }
+  .row{margin-top:4px;gap:4px}
+  .row button{
+    min-height:34px;
+    padding:4px;
+    font-size:10px;
+    border-width:3px;
+  }
+  .legend{display:none}
+  #overlay{
+    position:fixed;
+    padding:
+      calc(env(safe-area-inset-top) + 6px)
+      6px
+      calc(env(safe-area-inset-bottom) + 6px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .card{
+    max-width:430px;
+    padding:10px;
+    border-width:4px;
+  }
+  #rumpusPreview{
+    width:120px!important;
+    height:94px!important;
+  }
+  .card h2{font-size:29px;line-height:1}
+  .card p{font-size:9px;line-height:1.2;margin:7px 0}
+  .options{display:block;margin:8px 0}
+  .options label{font-size:10px}
+  .options select{
+    width:100%;
+    padding:8px 5px;
+    font-size:10px;
+    border-width:3px;
+  }
+  #start{
+    width:100%;
+    min-height:46px;
+    font-size:13px;
+    touch-action:manipulation;
+  }
+}
+
+#fx{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  aspect-ratio:4/3;
+  display:block;
+}
+
+
+:root{
+  --ui-font:"Courier New", monospace;
+}
+html,body,button,select,input,textarea,.panel,.card,.small,#status,#noise,.legend,h1,h2,label{
+  font-family:var(--ui-font) !important;
+  text-transform:uppercase;
+  -webkit-font-smoothing:none;
+  -moz-osx-font-smoothing:auto;
+  font-smooth:never;
+  text-rendering:optimizeSpeed;
+  font-variant-ligatures:none;
+  letter-spacing:1px;
+}
+body{
+  image-rendering:pixelated;
+}
+h1,h2,.card h2,button,select,#status,#noise,.legend,.small,label{
+  text-shadow:
+    1px 0 0 #000,
+    0 1px 0 #000,
+    1px 1px 0 #000;
+}
+.panel h2,.card h2{
+  letter-spacing:2px;
+}
+button,select{
+  font-weight:700;
+}
+#status,#noise,.legend,.small,label,p{
+  font-size:13px;
+  line-height:1.35;
+}
+.card p{
+  text-transform:uppercase;
+  -webkit-font-smoothing:none;
+  font-smooth:never;
+  text-rendering:optimizeSpeed;
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>HUNT THE RUMPUS</h1>
+      <div class="small">A RETRO CAVE-DEDUCTION HORROR-COMEDY</div>
+    </div>
+    <div class="small"><span id="campaign">LEVEL 1 / 5</span><br><span id="health">HEALTH ♥♥♥</span><br><span id="score">WINS 0 · RUMPUS 0 · PITS 0</span></div>
+  </header>
+
+  <main>
+    <div style="position:relative"><canvas id="game" width="800" height="600" aria-label="Game map"></canvas><canvas id="fx" width="800" height="600" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated"></canvas></div>
+    <section class="panel">
+      <h2>CAVE TERMINAL</h2>
+      <div id="status">PRESS START TO BEGIN THE HUNT.</div>
+      <div id="noise"></div>
+
+      <div class="controls">
+        <span class="blank"></span><button data-move="up">▲</button><span class="blank"></span>
+        <button data-move="left">◀</button><button id="shoot">AIM / FIRE</button><button data-move="right">▶</button>
+        <span class="blank"></span><button data-move="down">▼</button><span class="blank"></span>
+      </div>
+
+      <div class="row">
+        <button id="newGame">NEW MAZE</button>
+        <button id="soundToggle">SOUND: ON</button>
+      </div>
+
+      <div class="legend">
+        <div><span class="dot" style="background:#ff3b4f"></span>RED SPOOR: RUMPUS WITHIN 2 CONNECTED CAVES</div>
+        <div><span class="dot" style="background:#43e06f"></span>GREEN WALL: PIT NEXT DOOR</div>
+        <div><span class="dot" style="background:#8a6cff"></span>VAMPIRE BAT: BITE + ABDUCT · COSTS 1 HEALTH</div>
+        <div><span class="dot" style="background:#ff5d78"></span>HEALTH: PITS AND BAT ATTACKS COST 1 · RUMPUS IS INSTANT DEATH</div>
+        <div>WASD / ARROWS: MOVE · SPACE OR FIRE: AIM · THEN CHOOSE A DIRECTION</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="overlay">
+    <div class="card">
+      <canvas id="rumpusPreview" width="90" height="70" style="width:180px;height:140px"></canvas>
+      <h2>HUNT THE RUMPUS</h2>
+      <p>DEEP BELOW THE MOUNTAIN, SOMETHING HUGE IS STOMPING, SNORTING, AND DRAGGING AN UNREASONABLY LARGE BUTT THROUGH THE DARK.</p>
+      <p><strong>You have three health. Pits and vampire bats can hurt you. The Rumpus still eats you instantly.</strong></p>
+      <div class="options">
+        <label>PLAY MODE
+          <select id="preset">
+            <option value="campaign" selected>CAMPAIGN — 5 PROGRESSIVE LEVELS</option>
+            <option value="wimps">PRACTICE: WIMPS</option>
+            <option value="normal">PRACTICE: NORMAL</option>
+            <option value="hard">PRACTICE: HARD</option>
+            <option value="pro">PRACTICE: PRO</option>
+            <option value="nightmare">PRACTICE: ABSOLUTE NIGHTMARE</option>
+          </select>
+        </label>
+      </div>
+      <button id="start">BEGIN THE HUNT</button>
+      <p class="small">ORIGINAL FAN-MADE GAME. NO AFFILIATION WITH TEXAS INSTRUMENTS.<br>FIVE LEVELS. ONE ARROW. ZERO CHANCE THE RUMPUS LETS YOU RETIRE.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+const fx = document.getElementById('fx'), fctx = fx.getContext('2d');
+const preview = document.getElementById('rumpusPreview'), pctx = preview.getContext('2d');
+const app = document.getElementById('app');
+const statusEl = document.getElementById('status'), noiseEl = document.getElementById('noise');
+const scoreEl = document.getElementById('score'), overlay = document.getElementById('overlay');
+let audioOn=true, audioCtx=null, state=null, animating=false, aiming=false, themeTimer=null, themePlaying=false, campaignLevel=1, campaignMode=false;
+const score=JSON.parse(localStorage.getItem('rumpusScore')||'{"wins":0,"rumpus":0,"pits":0}');
+
+function saveScore(){localStorage.setItem('rumpusScore',JSON.stringify(score));scoreEl.textContent=`WINS ${score.wins} · RUMPUS ${score.rumpus} · PITS ${score.pits}`;}
+function updateHealth(){
+ const healthEl=document.getElementById('health');
+ if(!state){healthEl.textContent='HEALTH ♥♥♥';return;}
+ const hearts='♥'.repeat(Math.max(0,state.health));
+ const empty='♡'.repeat(Math.max(0,state.maxHealth-state.health));
+ healthEl.textContent=`HEALTH ${hearts}${empty}`;
+}
+saveScore();
+updateHealth();
+
+function ensureAudio(){
+ if(audioCtx)return audioCtx;
+ const AudioCtor=window.AudioContext||window.webkitAudioContext;
+ if(!AudioCtor)return null;
+ try{audioCtx=new AudioCtor();}catch(e){audioCtx=null;}
+ return audioCtx;
+}
+function unlockAudio(){
+ const ac=ensureAudio();
+ if(!ac)return Promise.resolve(false);
+ try{
+   const result=ac.resume();
+   return result&&typeof result.then==='function'
+     ? result.then(()=>true).catch(()=>false)
+     : Promise.resolve(true);
+ }catch(e){return Promise.resolve(false);}
+}
+
+function stopTheme(){
+ if(themeTimer){clearTimeout(themeTimer);themeTimer=null;}
+ themePlaying=false;
+
+}
+
+function playTheme(){
+ if(!audioOn || themePlaying || !audioCtx || audioCtx.state!=='running')return;
+ themePlaying=true;
+
+ // Original slow, dreadful 8-bit title theme.
+ const melody=[
+  [110,.55],[104,.55],[98,.75],[82,.85],
+  [110,.45],[123,.45],[116,.65],[87,.95],
+  [98,.55],[92,.55],[82,.75],[73,.95]
+ ];
+ const bass=[
+  [41,.95],[41,.95],[36,.95],[32,.95],
+  [41,.85],[46,.85],[36,1.05]
+ ];
+
+ let t=0;
+ melody.forEach(([f,d],i)=>{
+   tone(f,d,'square',.026,t);
+   tone(f*2,d*.72,'square',.008,t+.08);
+   if(i%3===0)noiseBurst(.12,.006,t+.02);
+   t+=d;
+ });
+
+ let tb=0;
+ bass.forEach(([f,d])=>{
+   tone(f,d,'sawtooth',.035,tb);
+   tone(f/2,d,'sine',.018,tb);
+   tb+=d;
+ });
+
+ // Uneasy final drop before looping.
+ tone(69,.45,'square',.018,t-.55);
+ tone(55,.7,'sawtooth',.035,t-.25);
+
+ themeTimer=setTimeout(()=>{
+   themePlaying=false;
+   playTheme();
+ },Math.max(1500,(t+.45)*1000));
+}
+function tone(freq=220,dur=.12,type='square',vol=.05,delay=0){
+ if(!audioOn)return;
+ if(!ensureAudio())return;
+ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+ o.type=type;o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(audioCtx.destination);
+ const t=audioCtx.currentTime+delay;
+ o.start(t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.stop(t+dur);
+}
+function noiseBurst(dur=.18,vol=.03,delay=0){
+ if(!audioOn)return;
+ if(!ensureAudio())return;
+ const sr=audioCtx.sampleRate, buffer=audioCtx.createBuffer(1, sr*dur, sr), data=buffer.getChannelData(0);
+ for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*(1-i/data.length);
+ const src=audioCtx.createBufferSource(), g=audioCtx.createGain();
+ src.buffer=buffer;g.gain.value=vol;src.connect(g);g.connect(audioCtx.destination);src.start(audioCtx.currentTime+delay);
+}
+function sting(){
+ const notes=[62,62,55,62,48,55,41];
+ const lengths=[.45,.45,.6,.45,.7,.6,1.1];
+ let t=0;
+ notes.forEach((f,i)=>{
+   tone(f,lengths[i],'sawtooth',.075,t);
+   tone(f*1.5,lengths[i]*.85,'square',.022,t+.04);
+   noiseBurst(.12,.012,t);
+   t+=lengths[i]*.82;
+ });
+}
+function caughtMusic(){
+ const seq=[196,196,196,196,98];
+ const d=[.16,.16,.16,.2,.6];
+ let t=0;
+ seq.forEach((f,i)=>{tone(f,d[i],'square',.09,t);tone(f/2,d[i],'sawtooth',.035,t);t+=d[i]*.9});
+}
+function batNoise(){
+ noiseBurst(.28,.055);
+ tone(1250,.05,'square',.05,0);
+ tone(900,.06,'square',.045,.07);
+ tone(1450,.05,'square',.04,.14);
+ tone(620,.12,'sawtooth',.035,.20);
+}
+function footstepNoise(){
+ tone(82,.08,'sine',.08,0);
+ noiseBurst(.07,.035,0);
+ tone(72,.09,'sine',.07,.16);
+ noiseBurst(.07,.03,.16);
+}
+function growlNoise(){
+ tone(76,.35,'sawtooth',.05,0);
+ tone(58,.42,'square',.025,.03);
+ noiseBurst(.28,.018,.02);
+}
+function freeRoomAmbience(){
+ const r=Math.random();
+ if(r<.34){noiseEl.textContent='? VAMPIRE BAT WINGS SLAP THE AIR SOMEWHERE NEARBY.';batNoise();}
+ else if(r<.67){noiseEl.textContent='? HEAVY FOOTSTEPS CROSS A DISTANT TUNNEL.';footstepNoise();}
+ else {noiseEl.textContent='? A LOW GROWL ROLLS THROUGH THE CAVES.';growlNoise();}
+}
+function rint(n){return Math.floor(Math.random()*n)}
+function shuffle(a){for(let i=a.length-1;i;i--){const j=rint(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function bfsDist(graph,start){
+ const d=Array(graph.length).fill(Infinity),q=[start];d[start]=0;
+ while(q.length){const v=q.shift();for(const n of graph[v])if(d[n]===Infinity){d[n]=d[v]+1;q.push(n)}}
+ return d;
+}
+function makeGraph(n,pos){
+ const g=Array.from({length:n},()=>[]),byKey=new Map();
+ pos.forEach((p,i)=>byKey.set(`${p.row},${p.col}`,i));
+ for(let i=0;i<n;i++){
+   const p=pos[i];
+   for(const [r,c] of [[p.row-1,p.col],[p.row+1,p.col],[p.row,p.col-1],[p.row,p.col+1]]){
+     const j=byKey.get(`${r},${c}`);
+     if(j!==undefined&&!g[i].includes(j))g[i].push(j);
+   }
+ }
+ return g;
+}
+function layout(n){
+ const cols=n<=12?4:n<=16?4:5,rows=Math.ceil(n/cols),slots=[];
+ const left=95,right=705,top=90,bottom=510;
+ const cellW=(right-left)/Math.max(1,cols-1),cellH=(bottom-top)/Math.max(1,rows-1);
+ for(let r=0;r<rows;r++)for(let c=0;c<cols&&slots.length<n;c++)
+   slots.push({x:left+c*cellW+(Math.random()-.5)*18,y:top+r*cellH+(Math.random()-.5)*18,row:r,col:c});
+ return shuffle(slots);
+}
+
+const campaignLevels=[
+ {name:'WIMPS',n:24,mode:'normal',pits:1,bats:1,maxHealth:4,subtitle:'THE MOUNTAIN BARELY NOTICES YOU.'},
+ {name:'THE CAVES STIR',n:20,mode:'normal',pits:2,bats:2,maxHealth:3,subtitle:'THE NOISES ARE GETTING CLOSER.'},
+ {name:'BAT COUNTRY',n:18,mode:'normal',pits:2,bats:4,maxHealth:3,subtitle:'THE CEILING IS ALIVE.'},
+ {name:'THE RUMPUS HUNGERS',n:14,mode:'blindfold',pits:2,bats:3,maxHealth:2,subtitle:'THE MAP REFUSES TO HELP YOU.'},
+ {name:'ABSOLUTE NIGHTMARE',n:10,mode:'nightmare',pits:2,bats:3,maxHealth:2,subtitle:'YOU SEE NOTHING. IT SEES YOU.'}
+];
+function updateCampaignUI(){
+ const el=document.getElementById('campaign');
+ if(el)el.textContent=campaignMode?`LEVEL ${campaignLevel} / 5`:'PRACTICE';
+}
+function showLevelCard(level,onDone){
+ animating=true;const info=campaignLevels[level-1];let start=null;
+ function frame(ts){
+   start ??= ts;const t=Math.min(1,(ts-start)/1800);
+   fctx.clearRect(0,0,800,600);fctx.fillStyle='rgba(2,3,8,.96)';fctx.fillRect(0,0,800,600);
+   fctx.textAlign='center';fctx.fillStyle='#6de7ff';fctx.font='bold 34px monospace';fctx.fillText(`LEVEL ${level}`,400,220);
+   fctx.fillStyle='#ff5a28';fctx.font='bold 48px monospace';fctx.fillText(info.name,400,290);
+   fctx.fillStyle='#f2f0d8';fctx.font='bold 20px monospace';fctx.fillText(info.subtitle,400,350);
+   if(t<1)requestAnimationFrame(frame);else setTimeout(()=>{fctx.clearRect(0,0,800,600);animating=false;onDone&&onDone();},350);
+ }
+ requestAnimationFrame(frame);
+}
+
+function newState(){
+ const preset=document.getElementById('preset').value;
+ campaignMode=preset==='campaign';
+ let config;
+ if(campaignMode)config=campaignLevels[campaignLevel-1];
+ else config={
+   wimps:{n:24,mode:'normal',pits:1,bats:1,maxHealth:4},
+   normal:{n:20,mode:'normal',pits:2,bats:2,maxHealth:3},
+   hard:{n:16,mode:'blindfold',pits:2,bats:2,maxHealth:3},
+   pro:{n:12,mode:'express',pits:2,bats:2,maxHealth:2},
+   nightmare:{n:10,mode:'nightmare',pits:2,bats:3,maxHealth:2}
+ }[preset];
+ const n=config.n,pos=layout(n),graph=makeGraph(n,pos);
+ let player=rint(n),rumpus=rint(n);while(rumpus===player)rumpus=rint(n);
+ let pits=shuffle([...Array(n).keys()].filter(x=>x!==player&&x!==rumpus)).slice(0,config.pits);
+ let bats=shuffle([...Array(n).keys()].filter(x=>x!==player&&x!==rumpus&&!pits.includes(x))).slice(0,config.bats);
+ return {preset,diff:preset,mode:config.mode,n,graph,pos,player,rumpus,rumpusStart:rumpus,pits,bats,
+   seen:new Set([player]),visitedBats:new Set(),alive:true,lastMessage:'THE HUNT BEGINS...',fakeTimer:0,
+   maxHealth:config.maxHealth,health:config.maxHealth,batHits:0,pitHits:0};
+}
+function startGame(){
+ stopTheme();
+ aiming=false;
+ document.getElementById('shoot').textContent='AIM / FIRE';
+ document.getElementById('shoot').style.background='#11162f';
+ state=newState();
+ updateCampaignUI();
+ updateHealth();
+ overlay.style.display='none';
+ statusEl.textContent = state.mode==='nightmare'
+   ? 'ABSOLUTE NIGHTMARE: YOU SEE NOTHING. TRUST YOUR EARS.'
+   : 'THE HUNT BEGINS. LISTEN CAREFULLY.';
+ noiseEl.textContent='';
+ const beginRound=()=>{tone(220,.1);tone(330,.1,'square',.05,.1);draw();scheduleFake();};
+ if(campaignMode)showLevelCard(campaignLevel,beginRound);else beginRound();
+}
+function scheduleFake(){
+ clearTimeout(state?.fakeTimer);
+ if(!state||!state.alive)return;
+ state.fakeTimer=setTimeout(()=>{
+  const fake=[
+   ['A DISTANT SHRIEK ECHOES... THEN STOPS.',()=>{tone(520,.1);tone(120,.25,'sawtooth')}],
+   ['SOMETHING LARGE JUST SAT DOWN.',()=>{tone(70,.3,'square',.08)}],
+   ['YOU HEAR THREE FOOTSTEPS. ONLY THREE.',footstepNoise],
+   ['A CHOMP SNAPS SOMEWHERE IN THE DARK.',()=>{tone(80,.08);tone(60,.12,'square',.05,.08)}],
+   ['THE WALL BEHIND YOU EXHALES.',()=>{tone(150,.5,'sine',.03)}]
+  ][rint(5)];
+  noiseEl.textContent='? '+fake[0];fake[1]();
+  if(Math.random()<.28){app.classList.add('shake');setTimeout(()=>app.classList.remove('shake'),260)}
+  scheduleFake();
+ }, 4200+Math.random()*6000);
+}
+
+function neighborForDirection(dir){
+ const p=state.pos[state.player];
+ const desired={up:-Math.PI/2,right:0,down:Math.PI/2,left:Math.PI}[dir];
+ let best=null,bestDiff=Infinity;
+ for(const n of state.graph[state.player]){
+   const q=state.pos[n];
+   const a=Math.atan2(q.y-p.y,q.x-p.x);
+   let diff=Math.abs(Math.atan2(Math.sin(a-desired),Math.cos(a-desired)));
+   if(diff<bestDiff){bestDiff=diff;best=n;}
+ }
+ return bestDiff<=Math.PI/5 ? best : null;
+}
+function setAiming(on){
+ aiming=on;
+ const btn=document.getElementById('shoot');
+ btn.textContent=on?'CHOOSE DIRECTION':'AIM / FIRE';
+ btn.style.background=on?'#ff3b4f':'#11162f';
+ statusEl.textContent=on
+   ? 'ARROW READY. PRESS UP, DOWN, LEFT, OR RIGHT TO FIRE.'
+   : clueText();
+}
+function clueText(){
+ const d=bfsDist(state.graph,state.rumpus)[state.player], pitNear=state.graph[state.player].some(n=>state.pits.includes(n)), batHere=state.bats.includes(state.player);
+ let s=[];
+ if(d<=2)s.push(`RED SPOOR: THE RUMPUS IS ${d===1?'1 CONNECTED CAVE':'WITHIN 2 CONNECTED CAVES'} AWAY.`);
+ if(pitNear)s.push('THE WALLS GLOW SICKLY GREEN.');
+ if(batHere)s.push('GIANT WINGS RUSTLE ABOVE.');
+ if(!s.length)s.push('THE CAVE FEELS QUIET. TOO QUIET.');
+ return s.join(' ');
+}
+
+function takeDamage(type){
+ if(!state||!state.alive)return false;
+ state.health--;
+ if(type==='pit')state.pitHits++;
+ if(type==='bat')state.batHits++;
+ updateHealth();
+ app.classList.add('shake');
+ setTimeout(()=>app.classList.remove('shake'),450);
+
+ if(state.health<=0){
+   if(type==='pit'){
+     statusEl.textContent='THE CAVE FINALLY FINISHED YOU. YOU ARE OUT OF HEALTH.';
+     tone(150,.7,'sawtooth',.09);
+   } else {
+     statusEl.textContent='THE VAMPIRE BATS DRAINED YOUR LAST BIT OF HEALTH.';
+     batNoise();
+   }
+   setTimeout(()=>end(type==='pit'?'pit':'batdeath'),500);
+   return true;
+ }
+ return false;
+}
+function escapePit(){
+ statusEl.textContent=`YOU HIT A PIT AND CRAWLED OUT! HEALTH REMAINING: ${state.health}.`;
+ noiseEl.textContent='THE RUMPUS HEARD THE SPLASH.';
+ tone(180,.25,'sawtooth',.07);
+ tone(120,.35,'square',.04,.12);
+ // Move to a safe neighboring cave if possible
+ const safe=state.graph[state.player].filter(n=>n!==state.rumpus&&!state.pits.includes(n));
+ if(safe.length){
+   state.player=safe[rint(safe.length)];
+   state.seen.add(state.player);
+ }
+ draw();
+}
+function move(dir){
+ if(!state||!state.alive||animating)return;
+ if(aiming){ fire(dir); return; }
+ const target=neighborForDirection(dir);
+ if(target===null){
+   statusEl.textContent='SOLID CAVE WALL. TRY ANOTHER DIRECTION.';
+   tone(90,.12);
+   return;
+ }
+ state.player=target;
+ if(state.mode==='blindfold') state.seen=new Set([target]);
+ else state.seen.add(target);
+ tone(470,.06);
+ if(state.player===state.rumpus)return end('rumpus');
+ if(state.pits.includes(state.player)){
+   if(takeDamage('pit'))return;
+   escapePit();
+   return;
+ }
+ if(state.bats.includes(state.player)){
+   batNoise();
+   if(state.visitedBats.has(state.player)){
+     statusEl.textContent='VAMPIRE BATS SWARM YOU, BITE YOU, AND DROP YOU SOMEWHERE TERRIBLE!';
+     sting();
+     if(takeDamage('bat'))return;
+     state.player=rint(state.n);
+     state.bats[state.bats.indexOf(target)]=rint(state.n);
+     state.seen.add(state.player);
+     if(state.player===state.rumpus)return setTimeout(()=>end('rumpus'),500);
+     if(state.pits.includes(state.player)){
+       if(takeDamage('pit'))return;
+       escapePit();
+       return;
+     }
+     statusEl.textContent=`THE BATS TOOK ONE HEALTH. ${state.health} REMAINING.`;
+   } else {
+     state.visitedBats.add(state.player);
+     statusEl.textContent='VAMPIRE BATS HANG ABOVE YOU. THEY ARE WATCHING. RETURNING MAY COST HEALTH.';
+   }
+ } else {
+   freeRoomAmbience();
+ }
+ statusEl.textContent=clueText();
+ if(Math.random()<.18){app.classList.add('flash');setTimeout(()=>app.classList.remove('flash'),190)}
+ draw();
+}
+function animateProjectile(onDone){
+ animating=true;let start=null;
+ function frame(ts){
+  start ??= ts; const t=Math.min(1,(ts-start)/520);
+  fctx.clearRect(0,0,800,600);
+  fctx.fillStyle='rgba(0,0,0,.30)';
+  fctx.fillRect(0,0,800,600);
+
+  const x=-140 + 1080*t;
+  const y=300 + Math.sin(t*8)*8;
+
+  // motion streaks
+  fctx.strokeStyle='rgba(255,228,94,.45)';
+  fctx.lineWidth=8;
+  fctx.beginPath();
+  fctx.moveTo(x-180,y+18);
+  fctx.lineTo(x-20,y+4);
+  fctx.stroke();
+
+  // shaft
+  fctx.strokeStyle='#ffe45e';
+  fctx.lineWidth=10;
+  fctx.beginPath();
+  fctx.moveTo(x-80,y+18);
+  fctx.lineTo(x+40,y-2);
+  fctx.stroke();
+
+  // fletching
+  fctx.fillStyle='#ff8a52';
+  fctx.beginPath();
+  fctx.moveTo(x-92,y+18);
+  fctx.lineTo(x-120,y+2);
+  fctx.lineTo(x-108,y+30);
+  fctx.fill();
+
+  // projectile head
+  fctx.fillStyle='#f2f0d8';
+  fctx.beginPath();
+  fctx.moveTo(x+56,y-6);
+  fctx.lineTo(x+24,y-20);
+  fctx.lineTo(x+28,y+8);
+  fctx.fill();
+
+  // sparkle
+  fctx.fillStyle='rgba(255,255,255,.7)';
+  fctx.fillRect(x+8,y-18,10,10);
+
+  if(t<1) requestAnimationFrame(frame);
+  else { fctx.clearRect(0,0,800,600); animating=false; onDone(); }
+ }
+ requestAnimationFrame(frame);
+}
+
+function levelCompleteAnimation(onDone){
+ animating=true;let start=null;
+ function frame(ts){
+  start ??= ts;const t=Math.min(1,(ts-start)/1900);
+  fctx.clearRect(0,0,800,600);fctx.fillStyle='rgba(0,0,0,.93)';fctx.fillRect(0,0,800,600);
+  fctx.textAlign='center';fctx.fillStyle='#43e06f';fctx.font='bold 40px monospace';fctx.fillText('RUMPUS DEFEATED!',400,240);
+  fctx.fillStyle='#f2f0d8';fctx.font='bold 22px monospace';fctx.fillText(`LEVEL ${campaignLevel} COMPLETE`,400,300);
+  fctx.fillStyle='#ff5a28';fctx.font='bold 18px monospace';fctx.fillText('IT RETREATS DEEPER INTO THE MOUNTAIN...',400,350);
+  if(t<1)requestAnimationFrame(frame);else setTimeout(()=>{fctx.clearRect(0,0,800,600);animating=false;onDone&&onDone();},350);
+ }
+ requestAnimationFrame(frame);
+}
+
+function princessEndingAnimation(onDone){
+ animating=true; let start=null;
+ function frame(ts){
+   start ??= ts;
+   const total=4200;
+   const t=(ts-start)/total;
+   const p=Math.min(1,t);
+   fctx.clearRect(0,0,800,600);
+
+   // sky and ground
+   fctx.fillStyle='#24326d'; fctx.fillRect(0,0,800,420);
+   fctx.fillStyle='#1a6a30'; fctx.fillRect(0,420,800,180);
+
+   // hill
+   fctx.fillStyle='#2d8c3d';
+   fctx.beginPath();
+   fctx.moveTo(80,420); fctx.quadraticCurveTo(400,180,720,420); fctx.lineTo(720,600); fctx.lineTo(80,600); fctx.fill();
+
+   // castle
+   fctx.fillStyle='#bfbdb2';
+   fctx.fillRect(520,210,120,120);
+   fctx.fillRect(500,180,36,150);
+   fctx.fillRect(624,180,36,150);
+   fctx.fillStyle='#7a776f';
+   fctx.fillRect(560,272,34,58);
+   fctx.fillStyle='#ff8a52';
+   fctx.fillRect(506,170,24,16); fctx.fillRect(630,170,24,16);
+
+   // characters move together
+   const heroX = 245 + Math.min(85, p*120);
+   const princessX = 475 - Math.min(85, p*120);
+   const kiss = p > .34;
+
+   // hero
+   drawHunter(fctx, heroX, 390, 1.05);
+
+   // princess
+   fctx.save();
+   fctx.translate(princessX, 390);
+   fctx.scale(1.05,1.05);
+   fctx.imageSmoothingEnabled=false;
+   fctx.fillStyle='#ffd7a8'; fctx.fillRect(-5,-18,10,10); // head
+   fctx.fillStyle='#ff66b3'; fctx.fillRect(-9,-8,18,21); // dress
+   fctx.fillRect(-12,-2,4,10); fctx.fillRect(8,-2,4,10); // arms
+   fctx.fillStyle='#f2f0d8'; fctx.fillRect(-8,13,6,10); fctx.fillRect(2,13,6,10); // legs
+   fctx.fillStyle='#fff04d'; fctx.fillRect(-8,-22,16,6); // crown/hair
+   fctx.restore();
+
+   if(p>.22){
+     fctx.textAlign='center';fctx.fillStyle='#ffe45e';fctx.font='bold 28px monospace';fctx.fillText('YOU DEFEATED THE RUMPUS!',400,72);
+     fctx.fillStyle='#f2f0d8';fctx.font='bold 17px monospace';fctx.fillText('THE KINGDOM IS SAVED!',400,102);
+     for(let k=0;k<8;k++){const a=k*Math.PI/4,rr=22+Math.sin(p*18+k)*8;fctx.fillStyle=k%2?'#ff5a28':'#6de7ff';fctx.fillRect(135+Math.cos(a)*rr,125+Math.sin(a)*rr,6,6);fctx.fillRect(665+Math.cos(a)*rr,125+Math.sin(a)*rr,6,6);}
+   }
+   // kiss heart
+   if(kiss){
+     fctx.fillStyle='#ff5d78';
+     fctx.fillRect(388,342,10,10);
+     fctx.fillRect(400,342,10,10);
+     fctx.fillRect(394,352,10,10);
+     fctx.fillRect(390,362,18,8);
+   }
+
+   // Rumpus burst
+   if(p>.58){
+     const bp = Math.min(1,(p-.58)/.38);
+     const rx = 640 - bp*210;
+     const ry = 410 - bp*135;
+     const rs = .9 + bp*1.25;
+     drawRumpus(fctx, rx, ry, rs);
+     if(bp>.35){
+       fctx.fillStyle='rgba(255,255,255,.15)';
+       fctx.fillRect(0,0,800,600);
+     }
+   }
+
+   if(p<1) requestAnimationFrame(frame);
+   else {
+     animating=false;
+     mouthCloseAnimation('JUST KIDDING. THE RUMPUS ALWAYS WINS!', onDone);
+   }
+ }
+ requestAnimationFrame(frame);
+}
+function mouthCloseAnimation(finalText,onDone){
+ animating=true;let start=null;
+ function frame(ts){
+   start ??= ts;
+   const total=3600;
+   const t=Math.min(1,(ts-start)/total);
+   fctx.clearRect(0,0,800,600);
+   fctx.fillStyle='rgba(0,0,0,.92)';
+   fctx.fillRect(0,0,800,600);
+
+   const cx=400, cy=300, w=520, h=380;
+   // outer face
+   fctx.fillStyle='#ff572c';
+   fctx.fillRect(cx-w/2, cy-h/2, w, h);
+   fctx.fillStyle='#ff8a52';
+   fctx.fillRect(cx+w/2-80, cy-90, 28, 80);
+
+   // eyes
+   fctx.fillStyle='#fff7cf';
+   fctx.fillRect(cx-150, cy-130, 38, 38);
+   fctx.fillRect(cx+112, cy-130, 38, 38);
+   fctx.fillStyle='#111';
+   fctx.fillRect(cx-136, cy-116, 12, 12);
+   fctx.fillRect(cx+126, cy-116, 12, 12);
+   fctx.fillRect(cx-160, cy-144, 54, 10);
+   fctx.fillRect(cx+102, cy-144, 54, 10);
+
+   // mouth cavity and closing gap
+   const gap=Math.max(0, 190*(1-Math.min(1,t*.72)));
+   fctx.fillStyle='#171b3a';
+   fctx.fillRect(cx-w/2+30, cy-gap/2, w-60, gap);
+
+   // teeth
+   fctx.fillStyle='#f2f0d8';
+   const teeth=11;
+   for(let i=0;i<teeth;i++){
+     const tx=cx-w/2+46+i*((w-92)/teeth);
+     const th=62;
+     fctx.beginPath();
+     fctx.moveTo(tx, cy-gap/2);
+     fctx.lineTo(tx+22, cy-gap/2);
+     fctx.lineTo(tx+11, cy-gap/2+th);
+     fctx.fill();
+
+     fctx.beginPath();
+     fctx.moveTo(tx, cy+gap/2);
+     fctx.lineTo(tx+22, cy+gap/2);
+     fctx.lineTo(tx+11, cy+gap/2-th);
+     fctx.fill();
+   }
+
+   // text after the jaws close
+   if(t>.82){
+     const alpha=Math.min(1,(t-.82)/.12);
+     fctx.fillStyle='rgba(0,0,0,'+(alpha*.55)+')';
+     fctx.fillRect(60, 432, 680, 110);
+     fctx.textAlign='center';
+     fctx.fillStyle='rgba(255,59,79,'+alpha+')';
+     fctx.font='bold 40px monospace';
+     fctx.fillText('GAME OVER!', 400, 476);
+     fctx.fillStyle='rgba(242,240,216,'+alpha+')';
+     fctx.font='bold 22px monospace';
+     fctx.fillText(finalText || "YOUR BUTT IN MINE!", 400, 514);
+   }
+
+   if(t<1) requestAnimationFrame(frame);
+   else {
+     setTimeout(()=>{ fctx.clearRect(0,0,800,600); animating=false; onDone&&onDone(); }, 900);
+   }
+ }
+ requestAnimationFrame(frame);
+}
+function fire(dir){
+ if(!state||!state.alive||animating)return;
+ if(!dir){
+   setAiming(!aiming);
+   return;
+ }
+ const target=neighborForDirection(dir);
+ if(target===null){
+   statusEl.textContent='NO TUNNEL THAT WAY. THE ARROW REMAINS LOADED.';
+   tone(90,.12);
+   return;
+ }
+ setAiming(false);
+ tone(900,.08);tone(300,.18,'sawtooth',.05,.07);
+ animateProjectile(()=>{ if(target===state.rumpus)end('win');else end('miss'); });
+}
+function end(kind){
+ state.alive=false;clearTimeout(state.fakeTimer);state.reveal=true;
+ if(kind==='win'){
+   score.wins++;caughtMusic();
+   if(campaignMode&&campaignLevel<campaignLevels.length){
+     statusEl.textContent=`LEVEL ${campaignLevel} COMPLETE. THE RUMPUS RETREATS.`;
+     levelCompleteAnimation(()=>{
+       campaignLevel++;state=newState();updateCampaignUI();updateHealth();
+       showLevelCard(campaignLevel,()=>{statusEl.textContent=state.mode==='nightmare'?'ABSOLUTE NIGHTMARE: YOU SEE NOTHING. TRUST YOUR EARS.':'THE NEXT HUNT BEGINS.';noiseEl.textContent='';draw();scheduleFake();});
+     });
+     saveScore();return;
+   }
+   statusEl.textContent='YOU HAVE DEFEATED THE FINAL RUMPUS. THE KINGDOM IS SAVED... PROBABLY.';
+   princessEndingAnimation(()=>draw());
+ } else if(kind==='rumpus'||kind==='miss'){
+   score.rumpus++;
+   statusEl.textContent=kind==='miss'
+     ? 'YOU MISSED. THE RUMPUS CAME CHOMPING STRAIGHT AT YOU.'
+     : 'YOU WALKED RIGHT INTO THE RUMPUS. IT IS THE LAST THING YOU SEE.';
+   sting();
+   mouthCloseAnimation("YOUR BUTT IN MINE!", ()=>draw());
+ } else if(kind==='pit'){
+   score.pits++;
+   statusEl.textContent='YOUR HEALTH HIT ZERO IN THE PIT. THE RUMPUS LAUGHS SOMEWHERE ABOVE.';
+   tone(180,.5,'sawtooth',.08);
+ } else if(kind==='batdeath'){
+   score.rumpus++;
+   statusEl.textContent='THE VAMPIRE BATS DRAINED YOUR LAST HEALTH. THE RUMPUS CLAIMS THE REMAINS.';
+   batNoise();
+ }
+ noiseEl.textContent='MAP REVEALED. PRESS NEW MAZE TO TRY AGAIN.';saveScore();updateHealth();draw();
+}
+function drawRumpus(c,x,y,s=1){
+ c.save();c.translate(x,y);c.scale(s,s);c.imageSmoothingEnabled=false;
+ // legs and feet
+ c.fillStyle='#f15a2a';c.fillRect(10,46,12,22);c.fillRect(42,46,12,22);c.fillRect(4,64,22,7);c.fillRect(40,64,22,7);
+ // huge rear/body silhouette
+ c.fillStyle='#ff572c';c.fillRect(14,16,38,34);c.fillRect(8,24,50,24);c.fillRect(40,18,20,30);
+ // arms
+ c.fillRect(2,31,10,22);c.fillRect(56,31,10,22);
+ // mouth
+ c.fillStyle='#171b3a';c.fillRect(11,22,44,25);c.fillRect(7,29,52,11);
+ // eyes and brow
+ c.fillStyle='#f2f0d8';c.fillRect(17,12,8,7);c.fillRect(40,12,8,7);
+ c.fillStyle='#111';c.fillRect(20,15,3,3);c.fillRect(43,15,3,3);c.fillRect(15,9,12,3);c.fillRect(38,9,12,3);
+ // teeth
+ c.fillStyle='#f2f0d8';for(let i=0;i<6;i++){c.fillRect(12+i*7,24,4,8);c.fillRect(12+i*7,38,4,8)}
+ // butt highlight and cheek
+ c.fillStyle='#ff8a52';c.fillRect(48,23,8,20);c.fillRect(54,27,4,11);
+ // nostril-ish mouth detail
+ c.fillStyle='#7f2114';c.fillRect(28,33,8,4);
+ c.restore();
+}
+
+function drawBat(c,x,y,s=1){
+ c.save();
+ c.translate(x,y);
+ c.scale(s,s);
+ c.imageSmoothingEnabled=false;
+
+ // left wing
+ c.fillStyle='#8a6cff';
+ c.fillRect(-18,-4,6,4);
+ c.fillRect(-24,0,8,4);
+ c.fillRect(-18,4,6,4);
+ c.fillRect(-12,0,6,8);
+
+ // body
+ c.fillStyle='#5a35d6';
+ c.fillRect(-5,-6,10,14);
+
+ // head and ears
+ c.fillStyle='#8a6cff';
+ c.fillRect(-6,-12,12,6);
+ c.fillRect(-8,-16,4,6);
+ c.fillRect(4,-16,4,6);
+
+ // right wing
+ c.fillRect(12,-4,6,4);
+ c.fillRect(16,0,8,4);
+ c.fillRect(12,4,6,4);
+ c.fillRect(6,0,6,8);
+
+ // eyes
+ c.fillStyle='#ff3b4f';
+ c.fillRect(-3,-10,2,2);
+ c.fillRect(1,-10,2,2);
+
+ // tiny fangs
+ c.fillStyle='#f2f0d8';
+ c.fillRect(-2,-1,1,3);
+ c.fillRect(1,-1,1,3);
+
+ c.restore();
+}
+function drawHunter(c,x,y,s=1){
+ c.save();c.translate(x,y);c.scale(s,s);c.imageSmoothingEnabled=false;
+ c.fillStyle='#ffe45e';
+ c.fillRect(-5,-17,10,10);           // head
+ c.fillRect(-8,-7,16,18);            // torso
+ c.fillRect(-12,-4,4,13);c.fillRect(8,-4,4,13); // arms
+ c.fillRect(-8,11,6,12);c.fillRect(2,11,6,12);  // legs
+ c.fillStyle='#1a2044';c.fillRect(-3,-14,2,2);c.fillRect(2,-14,2,2); // eyes
+ c.fillStyle='#ff8a52';c.fillRect(-8,-7,16,3);   // collar
+ c.fillStyle='#d9d7bd';c.fillRect(8,-2,11,2);    // tiny weapon
+ c.restore();
+}
+function draw(){
+ ctx.fillStyle='#141936';ctx.fillRect(0,0,800,600);
+ if(!state){drawRumpus(ctx,335,235,1.7);return}
+ const showAll=state.reveal;
+ if(state.mode==='nightmare' && !showAll){
+   ctx.fillStyle='#020306';
+   ctx.fillRect(0,0,800,600);
+   ctx.fillStyle='#0f1224';
+   for(let i=0;i<70;i++){ ctx.fillRect((i*113)%800, (i*67)%600, 2, 2); }
+   return;
+ }
+ ctx.lineWidth=6;
+ for(let i=0;i<state.n;i++){
+   if(!showAll&&!state.seen.has(i))continue;
+   for(const j of state.graph[i])if(j>i&&(showAll||state.seen.has(j))){
+     ctx.strokeStyle='#6470a8';ctx.lineCap='square';ctx.beginPath();ctx.moveTo(state.pos[i].x,state.pos[i].y);
+     if(Math.abs(state.pos[i].x-state.pos[j].x)>Math.abs(state.pos[i].y-state.pos[j].y)){
+       const mx=(state.pos[i].x+state.pos[j].x)/2;ctx.lineTo(mx,state.pos[i].y);ctx.lineTo(mx,state.pos[j].y);
+     }else{const my=(state.pos[i].y+state.pos[j].y)/2;ctx.lineTo(state.pos[i].x,my);ctx.lineTo(state.pos[j].x,my);}
+     ctx.lineTo(state.pos[j].x,state.pos[j].y);ctx.stroke();
+   }
+ }
+ for(let i=0;i<state.n;i++){
+   if(!showAll&&!state.seen.has(i))continue;
+   const p=state.pos[i], d=bfsDist(state.graph,state.rumpus)[i], pitNear=state.graph[i].some(n=>state.pits.includes(n));
+   ctx.fillStyle=pitNear?'#225d35':'#28305e';ctx.beginPath();ctx.arc(p.x,p.y,34,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle=d<=2?'#ff3b4f':'#d9d7bd';ctx.lineWidth=7;ctx.stroke();
+   if(state.bats.includes(i)&&(showAll||state.visitedBats.has(i))){
+     drawBat(ctx,p.x,p.y,1.0);
+   }
+   if(showAll&&state.pits.includes(i)){ctx.fillStyle='#43e06f';ctx.beginPath();ctx.arc(p.x,p.y,13,0,Math.PI*2);ctx.fill()}
+   if(showAll&&i===state.rumpus)drawRumpus(ctx,p.x-27,p.y-32,.82);
+ }
+ const pp=state.pos[state.player];drawHunter(ctx,pp.x,pp.y,1.12);
+}
+document.querySelectorAll('[data-move]').forEach(b=>b.addEventListener('click',()=>move(b.dataset.move)));
+
+let titleAudioUnlocked=false;
+function unlockTitleAudio(e){
+ if(titleAudioUnlocked || overlay.style.display==='none')return;
+ if(e && e.target && e.target.id==='start')return;
+ titleAudioUnlocked=true;
+ unlockAudio().then(ok=>{if(ok && overlay.style.display!=='none')playTheme();});
+}
+overlay.addEventListener('touchend',unlockTitleAudio,{passive:true,once:true});
+overlay.addEventListener('click',unlockTitleAudio,{passive:true,once:true});
+
+document.getElementById('shoot').onclick=()=>fire();
+let startLocked=false;
+function handleStart(e){
+ if(e){e.preventDefault();e.stopPropagation();}
+ if(startLocked)return;
+ startLocked=true;
+ unlockAudio().then(()=>{
+   tone(1,.01,'sine',.001);
+   startGame();
+   setTimeout(()=>{startLocked=false;},350);
+ });
+}
+const startButton=document.getElementById('start');
+startButton.addEventListener('click',handleStart,{passive:false});
+startButton.addEventListener('touchend',handleStart,{passive:false});
+document.getElementById('newGame').onclick=()=>{
+ overlay.style.display='grid';
+ campaignMode=false;campaignLevel=1;updateCampaignUI();
+ titleAudioUnlocked=false;
+ if(audioCtx&&audioCtx.state==='running')playTheme();
+};
+document.getElementById('soundToggle').onclick=e=>{
+ audioOn=!audioOn;
+ e.target.textContent='SOUND: '+(audioOn?'ON':'OFF');
+ if(!audioOn)stopTheme();
+};
+window.addEventListener('keydown',e=>{
+ const map={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
+ if(map[e.key]){e.preventDefault();move(map[e.key])}
+ if(e.code==='Space'){e.preventDefault();fire()}
+});
+pctx.fillStyle='#171b3a';pctx.fillRect(0,0,90,70);drawRumpus(pctx,12,2,.9);draw();
+
+
+})();
+</script>
+</body>
+</html>
